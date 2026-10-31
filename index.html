@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>JAVA - 触屏饮品菜单</title>
+  <style>
+    :root {
+      --bg: #f5efe6;
+      --paper: #fffdf9;
+      --paper-soft: #f9f4ed;
+      --ink: #2c241f;
+      --muted: #897b70;
+      --accent: #bd5934;
+      --accent-dark: #8f3e23;
+      --accent-soft: #f6e5da;
+      --green: #5f7158;
+      --line: rgba(74, 52, 37, 0.13);
+      --shadow: 0 16px 44px rgba(75, 48, 28, 0.08);
+    }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body {
+      background: #29231f;
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      overscroll-behavior: none;
+    }
+    button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    button:focus-visible { outline: 4px solid rgba(189, 89, 52, 0.35); outline-offset: 4px; }
+    button:disabled { cursor: default; }
+    [hidden] { display: none !important; }
+    #stage {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      transform-origin: center center;
+      background:
+        radial-gradient(circle at 5% 0%, rgba(255,255,255,0.9) 0, rgba(255,255,255,0) 32%),
+        radial-gradient(circle at 96% 100%, rgba(221,179,137,0.24) 0, rgba(221,179,137,0) 34%),
+        var(--bg);
+    }
+    #stage::before {
+      content: "";
+      position: absolute;
+      width: 480px;
+      height: 480px;
+      right: -240px;
+      top: -240px;
+      border: 1px solid rgba(113, 79, 51, 0.12);
+      border-radius: 50%;
+      box-shadow: 0 0 0 56px rgba(113,79,51,0.025), 0 0 0 112px rgba(113,79,51,0.02);
+      pointer-events: none;
+    }
+    .view { position: absolute; inset: 0; }
+    .view-enter { animation: viewIn 360ms cubic-bezier(.2,.75,.25,1) both; }
+    @keyframes viewIn { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: translateX(0); } }
+    .topbar {
+      height: 104px;
+      padding: 0 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+      position: relative;
+      z-index: 10;
+    }
+    .brand { display: flex; align-items: center; gap: 18px; background: transparent; padding: 0; text-align: left; }
+    .brand-mark {
+      width: 58px;
+      height: 58px;
+      border-radius: 19px;
+      background: transparent;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      overflow: hidden;
+    }
+    .brand-mark img { width: 100%; height: 100%; display: block; object-fit: contain; border-radius: inherit; }
+    .brand-name { display: block; font-size: 23px; line-height: 1.1; font-weight: 650; letter-spacing: 2.4px; }
+    .brand-sub { display: block; margin-top: 7px; color: var(--muted); font-size: 12px; letter-spacing: 2.1px; }
+    .machine-info { display: flex; align-items: center; gap: 26px; margin: 0 36px 0 auto; white-space: nowrap; }
+    .machine-info-item { display: flex; align-items: baseline; gap: 10px; }
+    .machine-info-item small { color: var(--muted); font-size: 14px; }
+    .machine-info-item strong { color: var(--ink); font-size: 18px; font-weight: 600; letter-spacing: 0.3px; }
+    .machine-info-divider { width: 1px; height: 24px; background: var(--line); }
+    .top-actions { display: flex; align-items: center; gap: 24px; }
+    .service-chip { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 17px; }
+    .status-dot { width: 9px; height: 9px; border-radius: 50%; background: #76936a; box-shadow: 0 0 0 6px rgba(118,147,106,0.12); }
+    .languages { display: flex; padding: 5px; gap: 3px; background: rgba(255,253,249,0.8); border: 1px solid var(--line); border-radius: 18px; }
+    .lang-btn { min-width: 62px; height: 44px; padding: 0 15px; border-radius: 13px; background: transparent; color: var(--muted); font-size: 16px; font-weight: 600; transition: 180ms ease; }
+    .lang-btn.active { background: var(--ink); color: #fff; }
+    .menu-main { height: calc(100% - 104px); padding-top: 24px; }
+    .hero { height: 108px; margin: 0 64px 20px; display: flex; align-items: center; justify-content: space-between; }
+    .eyebrow { display: flex; align-items: center; gap: 12px; color: var(--accent); font-size: 14px; font-weight: 650; letter-spacing: 2.2px; text-transform: uppercase; }
+    .eyebrow::before { content: ""; width: 28px; height: 2px; background: var(--accent); }
+    .hero h1 { margin: 12px 0 8px; font-size: 44px; line-height: 1.12; letter-spacing: -1.5px; font-weight: 650; }
+    .hero h1 span:last-child { color: var(--accent); }
+    .hero p { margin: 0; color: var(--muted); font-size: 18px; }
+    .swipe-hint { display: flex; align-items: center; gap: 18px; padding: 18px 24px; border: 1px solid var(--line); border-radius: 22px; background: rgba(255,253,249,0.52); }
+    .swipe-hint svg { width: 52px; height: 32px; }
+    .swipe-hint strong { display: block; font-size: 17px; font-weight: 600; }
+    .swipe-hint small { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; }
+    .category-tabs { height: 56px; margin: 0 64px 22px; display: flex; gap: 14px; }
+    .category-btn {
+      height: 56px;
+      padding: 0 28px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,253,249,0.68);
+      color: var(--muted);
+      font-size: 19px;
+      transition: 180ms ease;
+    }
+    .category-btn .count { min-width: 28px; height: 28px; padding: 0 7px; display: grid; place-items: center; border-radius: 9px; background: rgba(80,57,40,0.07); font-size: 14px; }
+    .category-btn.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .category-btn.active .count { background: rgba(255,255,255,0.14); }
+    .products-shell { height: 636px; margin: 0 64px 18px; position: relative; }
+    .product-viewport { width: 100%; height: 100%; overflow: hidden; touch-action: pan-y; }
+    .product-track { display: flex; width: 100%; height: 100%; transition: transform 420ms cubic-bezier(.22,.75,.22,1); will-change: transform; }
+    .product-track.dragging { transition: none; }
+    .product-page { flex: 0 0 100%; height: 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(2, 306px); gap: 24px 22px; }
+    .product-card {
+      position: relative;
+      min-width: 0;
+      height: 306px;
+      padding: 26px 20px 24px 26px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 158px;
+      gap: 8px;
+      overflow: hidden;
+      text-align: left;
+      border: 1px solid rgba(74,52,37,0.11);
+      border-radius: 28px;
+      background: rgba(255,253,249,0.94);
+      box-shadow: 0 8px 24px rgba(75,48,28,0.045);
+      transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+      touch-action: manipulation;
+    }
+    .product-card::after { content: ""; position: absolute; left: 0; top: 34px; width: 4px; height: 42px; border-radius: 0 4px 4px 0; background: var(--accent); opacity: 0; transition: 180ms ease; }
+    .product-card:hover { transform: translateY(-4px); border-color: rgba(189,89,52,0.32); box-shadow: var(--shadow); }
+    .product-card:hover::after { opacity: 1; }
+    .product-card:active { transform: scale(0.985); }
+    .card-copy { min-width: 0; display: flex; flex-direction: column; position: relative; z-index: 2; }
+    .card-kicker { color: var(--accent); font-size: 12px; font-weight: 650; letter-spacing: 1.7px; text-transform: uppercase; }
+    .card-title { margin: 12px 0 0; min-height: 62px; font-size: 27px; line-height: 1.16; font-weight: 650; letter-spacing: -0.6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .card-subtitle { margin-top: 7px; color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-tags { display: flex; gap: 7px; margin-top: 14px; }
+    .mini-tag { padding: 6px 9px; border-radius: 8px; background: var(--paper-soft); color: #6e6156; font-size: 12px; white-space: nowrap; }
+    .mini-tag.machine { color: var(--accent-dark); background: var(--accent-soft); }
+    .card-bottom { margin-top: auto; display: flex; align-items: flex-end; }
+    .price-tag { display: inline-flex; align-items: center; justify-content: center; max-width: 100%; padding: 9px 14px; border-radius: 14px; background: var(--accent); color: white; font-size: 19px; line-height: 1; font-weight: 700; letter-spacing: -0.3px; white-space: nowrap; box-shadow: 0 8px 18px rgba(189,89,52,0.18); }
+    .price-tag small { font-size: 14px; font-weight: 600; opacity: 0.82; }
+    .card-visual { position: relative; display: flex; align-items: flex-end; justify-content: center; height: 252px; border-radius: 22px; background: radial-gradient(circle at 50% 80%, #fff 0, #f4e9dc 72%); overflow: hidden; }
+    .card-visual::before { content: ""; position: absolute; width: 132px; height: 132px; top: 24px; border: 1px solid rgba(129,91,58,0.12); border-radius: 50%; }
+    .card-visual img { position: relative; z-index: 1; width: auto; height: 254px; max-width: 148px; object-fit: contain; filter: drop-shadow(0 12px 10px rgba(65,42,25,0.14)); pointer-events: none; }
+    .page-arrow {
+      position: absolute;
+      z-index: 5;
+      top: 50%;
+      width: 52px;
+      height: 82px;
+      display: grid;
+      place-items: center;
+      transform: translateY(-50%);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,253,249,0.88);
+      color: var(--ink);
+      box-shadow: 0 8px 20px rgba(75,48,28,0.06);
+      transition: 180ms ease;
+    }
+    .page-arrow.prev { left: -58px; }
+    .page-arrow.next { right: -58px; }
+    .page-arrow svg { width: 26px; height: 26px; }
+    .page-arrow:disabled { opacity: 0.25; box-shadow: none; }
+    .page-arrow:not(:disabled):active { transform: translateY(-50%) scale(0.93); }
+    .menu-footer { height: 54px; margin: 0 64px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; color: var(--muted); }
+    .page-dots { display: flex; align-items: center; gap: 10px; }
+    .page-dot { width: 10px; height: 10px; padding: 0; border-radius: 10px; background: #cfc2b5; transition: 220ms ease; }
+    .page-dot.active { width: 34px; background: var(--accent); }
+    .footer-note { display: flex; align-items: center; gap: 12px; font-size: 13px; letter-spacing: 0.5px; }
+    .footer-separator { width: 3px; height: 3px; border-radius: 50%; background: #b7a99b; }
+    .page-label { justify-self: end; font-size: 14px; font-variant-numeric: tabular-nums; letter-spacing: 1.6px; }
+    .detail-view { background: rgba(245,239,230,0.98); }
+    .back-btn { height: 62px; padding: 0 24px 0 18px; display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 19px; background: rgba(255,253,249,0.75); font-size: 18px; }
+    .back-btn svg { width: 25px; height: 25px; }
+    .detail-brand { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 15px; letter-spacing: 2px; }
+    .detail-brand .brand-mark { width: 42px; height: 42px; border-radius: 14px; }
+    .detail-brand .brand-mark svg { width: 25px; height: 25px; }
+    .detail-main { height: calc(100% - 104px); padding: 32px 64px 52px; display: grid; grid-template-columns: 610px minmax(0,1fr); gap: 62px; }
+    .detail-visual {
+      position: relative;
+      height: 100%;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 36px;
+      background:
+        radial-gradient(circle at 50% 46%, rgba(255,255,255,0.95) 0, rgba(255,255,255,0) 42%),
+        linear-gradient(150deg, #efe2d2 0%, #f9f3eb 58%, #e9d7c2 100%);
+    }
+    .detail-visual::before { content: ""; position: absolute; width: 420px; height: 420px; top: 124px; border: 1px solid rgba(118,80,50,0.12); border-radius: 50%; box-shadow: 0 0 0 50px rgba(255,255,255,0.13), 0 0 0 100px rgba(255,255,255,0.09); }
+    .detail-visual-top { width: 100%; padding: 30px 34px; display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 2; }
+    .detail-visual-top .mini-tag { font-size: 14px; padding: 9px 13px; background: rgba(255,253,249,0.7); }
+    .detail-image { position: relative; z-index: 1; width: auto; height: 570px; max-width: 390px; object-fit: contain; margin-top: 6px; filter: drop-shadow(0 28px 24px rgba(69,43,23,0.18)); transition: opacity 180ms ease, transform 240ms ease; pointer-events: none; }
+    .detail-image.changing { opacity: 0; transform: translateY(12px); }
+    .visual-caption { position: relative; z-index: 2; margin-top: auto; width: calc(100% - 64px); padding: 24px 0 28px; border-top: 1px solid rgba(82,57,39,0.13); display: flex; align-items: center; justify-content: space-between; }
+    .visual-caption strong { display: block; font-size: 18px; font-weight: 600; }
+    .visual-caption small { display: block; margin-top: 6px; color: var(--muted); font-size: 14px; }
+    .cup-volume { font-size: 28px; font-weight: 650; letter-spacing: -0.8px; }
+    .config-panel { height: 100%; min-width: 0; display: flex; flex-direction: column; padding-top: 10px; }
+    .detail-heading { padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+    .detail-heading h2 { margin: 12px 0 6px; font-size: 48px; line-height: 1.12; font-weight: 650; letter-spacing: -1.4px; }
+    .detail-english { color: var(--muted); font-size: 20px; }
+    .detail-price { display: inline-flex; align-items: center; justify-content: center; gap: 10px; margin-top: 16px; padding: 13px 26px; border-radius: 16px; background: var(--accent); color: white; font-size: 27px; font-weight: 700; letter-spacing: -0.3px; white-space: nowrap; box-shadow: 0 12px 24px rgba(189,89,52,0.22); }
+    .detail-price small { font-size: 17px; font-weight: 600; opacity: 0.82; }
+    .detail-description { margin: 16px 0 0; max-width: 900px; color: #6f6257; font-size: 20px; line-height: 1.55; }
+    .config-group { margin-top: 26px; }
+    .config-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .config-label { display: flex; align-items: center; gap: 12px; font-size: 23px; font-weight: 600; }
+    .step-number { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 10px; background: var(--ink); color: white; font-size: 15px; }
+    .required-hint { color: var(--muted); font-size: 15px; }
+    .option-row { display: flex; gap: 16px; }
+    .option-btn {
+      min-width: 190px;
+      height: 88px;
+      padding: 0 26px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 16px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: rgba(255,253,249,0.82);
+      text-align: left;
+      transition: 180ms ease;
+      touch-action: manipulation;
+    }
+    .option-btn svg { width: 32px; height: 32px; flex: 0 0 auto; }
+    .option-btn .option-name { display: block; font-size: 22px; font-weight: 600; }
+    .option-btn .option-note { display: block; margin-top: 5px; color: var(--muted); font-size: 14px; }
+    .option-btn.selected { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-dark); box-shadow: inset 0 0 0 1px var(--accent); }
+    .option-btn.selected .option-note { color: var(--accent-dark); }
+    .option-btn:active { transform: scale(0.98); }
+    .sweetness-row .option-btn { min-width: 176px; }
+    .fixed-recipe { margin-top: 26px; padding: 18px 22px; display: flex; align-items: center; gap: 14px; border-radius: 18px; background: rgba(255,253,249,0.55); color: var(--muted); font-size: 16px; }
+    .fixed-recipe svg { width: 26px; height: 26px; flex: 0 0 auto; }
+    .config-bottom { margin-top: auto; padding-top: 22px; display: flex; align-items: center; justify-content: space-between; gap: 28px; border-top: 1px solid var(--line); }
+    .selection-summary { min-width: 0; }
+    .selection-summary small { display: block; color: var(--muted); font-size: 14px; margin-bottom: 8px; }
+    .selection-text { font-size: 20px; line-height: 1.35; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .confirm-btn { min-width: 330px; height: 84px; padding: 0 34px; display: flex; align-items: center; justify-content: center; gap: 18px; border-radius: 24px; background: var(--accent); color: white; font-size: 23px; font-weight: 600; box-shadow: 0 14px 28px rgba(189,89,52,0.22); transition: 180ms ease; }
+    .confirm-btn svg { width: 27px; height: 27px; }
+    .confirm-btn:disabled { background: #d5c9bd; color: #8f8277; box-shadow: none; }
+    .confirm-btn:not(:disabled):active { transform: scale(0.98); }
+    .toast {
+      position: absolute;
+      z-index: 100;
+      left: 50%;
+      bottom: 42px;
+      max-width: 1120px;
+      min-height: 76px;
+      padding: 18px 28px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transform: translate(-50%, 24px);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 22px;
+      background: rgba(44,36,31,0.96);
+      color: white;
+      font-size: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: 240ms ease;
+      box-shadow: 0 18px 44px rgba(44,36,31,0.24);
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .toast svg { width: 30px; height: 30px; flex: 0 0 auto; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <section id="menuView" class="view" aria-label="饮品菜单">
+      <header class="topbar">
+        <button class="brand" id="brandHome" aria-label="Coffee Station 首页">
+          <span class="brand-mark"><img src="assets/logo.png" alt="JAVA"></span>
+          <span><span class="brand-name">JAVA</span><span class="brand-sub">COFFEE STATION</span></span>
+        </button>
+        <div class="machine-info" aria-label="设备与客服信息">
+          <span class="machine-info-item"><small data-i18n="deviceLabel">设备铭牌号</small><strong>wsd1234567890</strong></span>
+          <span class="machine-info-divider"></span>
+          <span class="machine-info-item"><small data-i18n="serviceLabel">客服电话</small><strong>800-123-4567</strong></span>
+        </div>
+        <div class="top-actions">
+          <div class="service-chip"><span class="status-dot"></span><span data-i18n="serviceStatus">新鲜现制 · 自助服务</span></div>
+          <div class="languages" role="group" aria-label="语言选择">
+            <button class="lang-btn active" data-lang="zh">中</button><button class="lang-btn" data-lang="en">EN</button><button class="lang-btn" data-lang="vi">VI</button>
+          </div>
+        </div>
+      </header>
+      <main class="menu-main">
+        <section class="hero">
+          <div>
+            <h1><span data-i18n="heroTitleA">一杯好咖啡，</span><span data-i18n="heroTitleB">此刻为你现做</span></h1>
+          </div>
+          <div class="swipe-hint">
+            <svg viewBox="0 0 56 32" fill="none" aria-hidden="true"><path d="M17 16h22M23 8l-8 8 8 8M33 8l8 8-8 8" stroke="#bd5934" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 10v12M52 10v12" stroke="#c9b9a9" stroke-width="2" stroke-linecap="round"/></svg>
+            <div><strong data-i18n="swipeTitle">左右滑动，探索更多</strong></div>
+          </div>
+        </section>
+        <nav id="categoryTabs" class="category-tabs" aria-label="饮品分类"></nav>
+        <section class="products-shell" aria-label="商品分页区域">
+          <button id="prevPage" class="page-arrow prev" aria-label="上一页"><svg viewBox="0 0 24 24" fill="none"><path d="m15 5-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div id="productViewport" class="product-viewport"><div id="productTrack" class="product-track"></div></div>
+          <button id="nextPage" class="page-arrow next" aria-label="下一页"><svg viewBox="0 0 24 24" fill="none"><path d="m9 5 7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </section>
+        <footer class="menu-footer">
+          <div id="pageDots" class="page-dots" aria-label="分页"></div>
+          <div id="pageLabel" class="page-label">01 / 02</div>
+        </footer>
+      </main>
+    </section>
+
+    <section id="detailView" class="view detail-view" aria-label="饮品二次配置" hidden>
+      <header class="topbar">
+        <button id="backButton" class="back-btn"><svg viewBox="0 0 24 24" fill="none"><path d="m15 5-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="backMenu">返回饮品菜单</span></button>
+        <div class="detail-brand"><span class="brand-mark"><img src="assets/logo.png" alt="JAVA"></span>JAVA</div>
+        <div class="languages" role="group" aria-label="语言选择"><button class="lang-btn active" data-lang="zh">中</button><button class="lang-btn" data-lang="en">EN</button><button class="lang-btn" data-lang="vi">VI</button></div>
+      </header>
+      <main class="detail-main">
+        <aside class="detail-visual">
+          <div class="detail-visual-top"><span id="detailCategory" class="mini-tag">经典咖啡</span><span id="detailMachine" class="mini-tag machine" hidden>6008</span></div>
+          <img id="detailImage" class="detail-image" src="assets/drinks/拿铁咖啡.png" alt="饮品图片" draggable="false">
+          <div class="visual-caption"><div><strong data-i18n="freshMade">接到订单后新鲜现制</strong><small data-i18n="imageOnly">饮品图片仅作展示参考</small></div><span class="cup-volume">240 ML</span></div>
+        </aside>
+        <section class="config-panel">
+          <div class="detail-heading">
+            <div class="eyebrow" data-i18n="customizeEyebrow">按配方定制你的饮品</div>
+            <h2 id="detailTitle">拿铁咖啡</h2>
+            <div id="detailEnglish" class="detail-english">Caffè latte</div>
+            <div id="detailPrice" class="detail-price">30,000 VND</div>
+            <p id="detailDescription" class="detail-description"></p>
+          </div>
+          <div id="temperatureGroup" class="config-group">
+            <div class="config-label-row"><div class="config-label"><span class="step-number">1</span><span data-i18n="temperature">选择温度</span></div><span class="required-hint" data-i18n="pleaseChoose">请选择</span></div>
+            <div id="temperatureOptions" class="option-row"></div>
+          </div>
+          <div id="sweetnessGroup" class="config-group">
+            <div class="config-label-row"><div class="config-label"><span id="sweetStep" class="step-number">2</span><span data-i18n="sweetness">选择甜度</span></div><span class="required-hint" data-i18n="pleaseChoose">请选择</span></div>
+            <div id="sweetnessOptions" class="option-row sweetness-row"></div>
+          </div>
+          <div class="fixed-recipe"><svg viewBox="0 0 24 24" fill="none"><path d="M6 3h12v4l-2 3v9a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-9L6 7V3Z" stroke="currentColor" stroke-width="1.7"/><path d="M8 12h8" stroke="currentColor" stroke-width="1.7"/></svg><span data-i18n="fixedRecipe">标准杯量 240 ML；冰量、奶量、浓度及糖浆按原配方固定。</span></div>
+          <div class="config-bottom">
+            <div class="selection-summary"><small data-i18n="yourSelection">你的选择</small><div id="selectionText" class="selection-text"></div></div>
+            <button id="confirmConfig" class="confirm-btn" disabled><span id="confirmText">请先完成配置</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          </div>
+        </section>
+      </main>
+    </section>
+    <div id="toast" class="toast" role="status" aria-live="polite"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#b9d3a7" stroke-width="1.8"/><path d="m8 12 2.5 2.5L16 9" stroke="#b9d3a7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="toastText"></span></div>
+  </div>
+
+  <script>
+    const translations = {
+      zh: {
+        deviceLabel: "设备铭牌号", serviceLabel: "客服电话", serviceStatus: "新鲜现制 · 自助服务", heroEyebrow: "每日新鲜 · 240 ML 标准杯", heroTitleA: "一杯好咖啡，", heroTitleB: "此刻为你现做", heroSubtitle: "选择喜欢的饮品，再按配方调整温度与甜度。", swipeTitle: "左右滑动，探索更多", swipeSubtitle: "也可以点击两侧翻页按钮", recipeNote: "杯量固定 · 图片仅供参考", backMenu: "返回饮品菜单", freshMade: "接到订单后新鲜现制", imageOnly: "饮品图片仅作展示参考", customizeEyebrow: "按配方定制你的饮品", temperature: "选择温度", sweetness: "选择甜度", pleaseChoose: "请选择", fixedRecipe: "标准杯量 240 ML；冰量、奶量、浓度及糖浆按原配方固定。", yourSelection: "你的选择", hot: "热饮", iced: "冰饮", hotNote: "温暖醇香", icedNote: "清爽冰凉", sweet3: "3分甜", sweet5: "5分甜", sweet7: "7分甜", lightSweet: "清爽少甜", mediumSweet: "平衡适口", richSweet: "香甜浓郁", selectTemperature: "请选择温度", selectSweetness: "请选择甜度", readyConfirm: "确认选择", incomplete: "请先完成配置", configured: "配置已确认", standardCup: "240 ML 标准杯", all: "全部饮品", classic: "经典咖啡", latte: "风味拿铁", tea: "茶饮与可可"
+      },
+      en: {
+        deviceLabel: "Device ID", serviceLabel: "Service hotline", serviceStatus: "Freshly made · Self-service", heroEyebrow: "Made fresh · 240 ML cup", heroTitleA: "Your coffee, ", heroTitleB: "made fresh for you", heroSubtitle: "Choose your drink, then adjust temperature and sweetness where available.", swipeTitle: "Swipe to explore more", swipeSubtitle: "Or use the page buttons on either side", recipeNote: "Fixed cup size · Images for reference", backMenu: "Back to menu", freshMade: "Freshly made after your order", imageOnly: "Drink images are for reference only", customizeEyebrow: "Customize your drink", temperature: "Choose temperature", sweetness: "Choose sweetness", pleaseChoose: "Required", fixedRecipe: "Fixed 240 ML cup. Ice, milk, strength and syrup follow the original recipe.", yourSelection: "Your selection", hot: "Hot", iced: "Iced", hotNote: "Warm and aromatic", icedNote: "Cool and refreshing", sweet3: "Light sweet", sweet5: "Half sweet", sweet7: "Sweet", lightSweet: "30% sweetness", mediumSweet: "50% sweetness", richSweet: "70% sweetness", selectTemperature: "Select temperature", selectSweetness: "Select sweetness", readyConfirm: "Confirm selection", incomplete: "Complete your selection", configured: "Selection confirmed", standardCup: "240 ML standard cup", all: "All drinks", classic: "Classic coffee", latte: "Flavoured latte", tea: "Tea & cocoa"
+      },
+      vi: {
+        deviceLabel: "Mã thiết bị", serviceLabel: "Hotline CSKH", serviceStatus: "Pha chế tươi · Tự phục vụ", heroEyebrow: "Pha chế tươi · Ly 240 ML", heroTitleA: "Cà phê thơm ngon, ", heroTitleB: "pha ngay cho bạn", heroSubtitle: "Chọn món yêu thích, sau đó chọn nhiệt độ và độ ngọt nếu có.", swipeTitle: "Vuốt để xem thêm", swipeSubtitle: "Hoặc dùng nút chuyển trang hai bên", recipeNote: "Dung tích cố định · Hình ảnh minh họa", backMenu: "Quay lại thực đơn", freshMade: "Pha chế tươi sau khi đặt món", imageOnly: "Hình ảnh đồ uống chỉ để tham khảo", customizeEyebrow: "Tùy chọn đồ uống của bạn", temperature: "Chọn nhiệt độ", sweetness: "Chọn độ ngọt", pleaseChoose: "Bắt buộc", fixedRecipe: "Ly cố định 240 ML. Đá, sữa, độ đậm và syrup theo công thức gốc.", yourSelection: "Lựa chọn của bạn", hot: "Nóng", iced: "Đá", hotNote: "Ấm và thơm", icedNote: "Mát và tươi", sweet3: "Ít ngọt", sweet5: "Vừa ngọt", sweet7: "Ngọt hơn", lightSweet: "30% độ ngọt", mediumSweet: "50% độ ngọt", richSweet: "70% độ ngọt", selectTemperature: "Chọn nhiệt độ", selectSweetness: "Chọn độ ngọt", readyConfirm: "Xác nhận lựa chọn", incomplete: "Hoàn tất lựa chọn", configured: "Đã xác nhận lựa chọn", standardCup: "Ly tiêu chuẩn 240 ML", all: "Tất cả", classic: "Cà phê kinh điển", latte: "Latte hương vị", tea: "Trà & ca cao"
+      }
+    };
+
+    const products = [
+      { id: "espresso", category: "classic", names: { zh: "意式浓缩咖啡", en: "Espresso", vi: "Espresso" }, subtitles: { zh: "Espresso", en: "意式浓缩咖啡", vi: "Espresso" }, descriptions: { zh: "小杯浓缩萃取，咖啡香气集中，适合偏爱纯粹风味的你。", en: "A concentrated shot with an intense aroma for those who enjoy pure coffee.", vi: "Một shot cà phê đậm đặc, dành cho những ai thích hương vị cà phê thuần túy." }, images: { default: "意式咖啡.png" }, temperatures: [], sweetness: false },
+      { id: "black", category: "classic", names: { zh: "黑咖啡", en: "Black coffee", vi: "Cà phê đen" }, subtitles: { zh: "Black coffee", en: "黑咖啡", vi: "Cà phê đen" }, descriptions: { zh: "清晰咖啡香气与利落口感，可选冷热及三档配方甜度。", en: "A clean, aromatic coffee available hot or iced with three recipe sweetness levels.", vi: "Cà phê thơm, hậu vị gọn; có thể chọn nóng, đá và ba mức ngọt theo công thức." }, images: { hot: "美式咖啡.png", iced: "冰美式.png", default: "美式咖啡.png" }, temperatures: ["hot", "iced"], sweetness: true },
+      { id: "latte", category: "classic", names: { zh: "拿铁咖啡", en: "Caffè latte", vi: "Cà phê latte" }, subtitles: { zh: "Caffè latte", en: "拿铁咖啡", vi: "Cà phê latte" }, descriptions: { zh: "咖啡与奶香平衡融合，口感柔和，可选冷热及三档配方甜度。", en: "A smooth balance of coffee and milk, available hot or iced with three sweetness levels.", vi: "Sự cân bằng giữa cà phê và sữa; có thể chọn nóng, đá và ba mức ngọt." }, images: { hot: "拿铁咖啡.png", iced: "冰拿铁.png", default: "拿铁咖啡.png" }, temperatures: ["hot", "iced"], sweetness: true },
+      { id: "cappuccino", category: "classic", names: { zh: "卡布奇诺", en: "Cappuccino", vi: "Cappuccino" }, subtitles: { zh: "Cappuccino", en: "卡布奇诺", vi: "Cappuccino" }, descriptions: { zh: "绵密奶泡与咖啡的经典搭配，层次丰富，可选冷热及配方甜度。", en: "A classic layered combination of coffee and milk foam, with hot, iced and sweetness options.", vi: "Sự kết hợp kinh điển giữa cà phê và bọt sữa mịn, có tùy chọn nóng, đá và độ ngọt." }, images: { hot: "卡布奇诺.png", iced: "冰卡布.png", default: "卡布奇诺.png" }, temperatures: ["hot", "iced"], sweetness: true },
+      { id: "matcha", category: "tea", names: { zh: "抹茶拿铁", en: "Matcha latte", vi: "Matcha latte" }, subtitles: { zh: "Matcha latte", en: "抹茶拿铁", vi: "Matcha latte" }, descriptions: { zh: "清新抹茶融合顺滑奶香，冷热皆宜，并提供三档配方甜度。", en: "Fresh matcha blended with smooth milk, available hot or iced with three sweetness levels.", vi: "Matcha tươi mát hòa quyện với sữa mịn, có tùy chọn nóng, đá và ba mức ngọt." }, images: { hot: "抹茶拿铁.png", iced: "冰抹茶拿铁.png", default: "抹茶拿铁.png" }, temperatures: ["hot", "iced"], sweetness: true },
+      { id: "cocoa", category: "tea", names: { zh: "可可", en: "Cocoa", vi: "Ca cao" }, subtitles: { zh: "Cocoa", en: "可可", vi: "Ca cao" }, descriptions: { zh: "浓郁可可与香甜奶香，冷热两种选择，甜度按原配方固定。", en: "Rich cocoa with a smooth, sweet finish. Available hot or iced; sweetness follows the recipe.", vi: "Ca cao đậm đà, thơm ngọt; có thể chọn nóng hoặc đá, độ ngọt theo công thức cố định." }, images: { hot: "牛奶巧克力.png", iced: "冰牛奶巧克力.png", default: "牛奶巧克力.png" }, temperatures: ["hot", "iced"], sweetness: false },
+      { id: "milk-tea", category: "tea", names: { zh: "丝袜奶茶", en: "Hong Kong milk tea", vi: "Trà sữa Hồng Kông" }, subtitles: { zh: "Hong Kong milk tea", en: "丝袜奶茶", vi: "Trà sữa Hồng Kông" }, descriptions: { zh: "茶香与奶香融合的港式风味，可选热饮或冰饮，配方甜度固定。", en: "A Hong Kong-style blend of tea and milk, served hot or iced with fixed recipe sweetness.", vi: "Trà sữa kiểu Hồng Kông thơm béo, có thể chọn nóng hoặc đá, độ ngọt theo công thức." }, images: { hot: "港式奶茶.png", iced: "冰奶茶.png", default: "港式奶茶.png" }, temperatures: ["hot", "iced"], sweetness: false },
+      { id: "egg-coffee", category: "classic", names: { zh: "鸡蛋咖啡", en: "Vietnamese egg coffee", vi: "Cà phê trứng" }, subtitles: { zh: "Vietnamese egg coffee", en: "鸡蛋咖啡", vi: "Cà phê trứng" }, descriptions: { zh: "具有越南特色的浓郁风味，口感绵密，可选热饮或冰饮。", en: "A rich, creamy Vietnamese specialty available hot or iced.", vi: "Đặc sản Việt Nam đậm đà, béo mịn, có thể chọn nóng hoặc đá." }, images: { hot: "04.png", iced: "01.png", default: "04.png" }, temperatures: ["hot", "iced"], sweetness: false },
+      { id: "vanilla-latte", category: "latte", machine: "6008", names: { zh: "香草拿铁", en: "Vanilla latte", vi: "Latte vani" }, subtitles: { zh: "Vanilla latte", en: "香草拿铁", vi: "Latte vani" }, descriptions: { zh: "柔和香草风味与咖啡奶香融合，6008 机型增补饮品。", en: "Smooth vanilla paired with coffee and milk. An additional recipe for the 6008 model.", vi: "Hương vani dịu nhẹ hòa với cà phê và sữa. Món bổ sung cho model 6008." }, images: { hot: "拿铁咖啡.png", iced: "冰拿铁.png", default: "拿铁咖啡.png" }, temperatures: ["hot", "iced"], sweetness: false },
+      { id: "caramel-latte", category: "latte", machine: "6008", names: { zh: "焦糖拿铁", en: "Caramel latte", vi: "Latte caramel" }, subtitles: { zh: "Caramel latte", en: "焦糖拿铁", vi: "Latte caramel" }, descriptions: { zh: "焦糖香甜与拿铁融合，风味柔和，6008 机型增补饮品。", en: "Sweet caramel blended into a smooth latte. An additional recipe for the 6008 model.", vi: "Caramel ngọt thơm hòa quyện với latte mịn. Món bổ sung cho model 6008." }, images: { hot: "01.png", iced: "冰拿铁.png", default: "01.png" }, temperatures: ["hot", "iced"], sweetness: false },
+      { id: "watermelon-caramel", category: "latte", machine: "6008", names: { zh: "西瓜焦糖拿铁", en: "Watermelon caramel latte", vi: "Latte caramel dưa hấu" }, subtitles: { zh: "Watermelon caramel latte", en: "西瓜焦糖拿铁", vi: "Latte caramel dưa hấu" }, descriptions: { zh: "西瓜与焦糖风味交织的特色拿铁，当前按源配方提供热饮。", en: "A distinctive latte with watermelon and caramel, currently offered hot according to the source recipe.", vi: "Latte đặc biệt với hương dưa hấu và caramel, hiện cung cấp món nóng theo công thức gốc." }, images: { hot: "02.png", default: "02.png" }, temperatures: ["hot"], sweetness: false },
+      { id: "watermelon-vanilla", category: "latte", machine: "6008", names: { zh: "西瓜香草拿铁", en: "Watermelon vanilla latte", vi: "Latte vani dưa hấu" }, subtitles: { zh: "Watermelon vanilla latte", en: "西瓜香草拿铁", vi: "Latte vani dưa hấu" }, descriptions: { zh: "西瓜与香草带来清新香甜的拿铁风味，可选热饮或冰饮。", en: "A fresh, sweet latte with watermelon and vanilla, available hot or iced.", vi: "Latte tươi mát với hương dưa hấu và vani, có thể chọn nóng hoặc đá." }, images: { hot: "04.png", iced: "02.png", default: "04.png" }, temperatures: ["hot", "iced"], sweetness: false },
+      { id: "vanilla-caramel", category: "latte", machine: "6008", names: { zh: "香草焦糖拿铁", en: "Vanilla caramel latte", vi: "Latte vani caramel" }, subtitles: { zh: "Vanilla caramel latte", en: "香草焦糖拿铁", vi: "Latte vani caramel" }, descriptions: { zh: "香草与焦糖双重风味，搭配咖啡与奶香，可选热饮或冰饮。", en: "Layered vanilla and caramel with coffee and milk, available hot or iced.", vi: "Hương vani và caramel nhiều tầng hòa với cà phê và sữa, có thể chọn nóng hoặc đá." }, images: { hot: "摩卡.png", iced: "01.png", default: "摩卡.png" }, temperatures: ["hot", "iced"], sweetness: false },
+      { id: "jasmine-latte", category: "tea", machine: "6008", names: { zh: "茉莉拿铁", en: "Jasmine latte", vi: "Latte nhài" }, subtitles: { zh: "Jasmine latte", en: "茉莉拿铁", vi: "Latte nhài" }, descriptions: { zh: "清雅茉莉茶香与顺滑奶香结合，6008 机型增补饮品。", en: "Delicate jasmine tea with smooth milk. An additional recipe for the 6008 model.", vi: "Trà nhài thanh nhã hòa với sữa mịn. Món bổ sung cho model 6008." }, images: { hot: "06.png", iced: "04.png", default: "06.png" }, temperatures: ["hot", "iced"], sweetness: false }
+    ];
+
+    const categories = ["all", "classic", "latte", "tea"];
+    const prices = {
+      espresso: 30000,
+      black: 30000,
+      latte: 40000,
+      cappuccino: 40000,
+      matcha: 45000,
+      cocoa: 35000,
+      "milk-tea": 35000,
+      "egg-coffee": 85000,
+      "vanilla-latte": 45000,
+      "caramel-latte": 45000,
+      "watermelon-caramel": 50000,
+      "watermelon-vanilla": 50000,
+      "vanilla-caramel": 50000,
+      "jasmine-latte": 45000
+    };
+    const assetBase = "assets/drinks/";
+    let currentLang = "zh";
+    let currentCategory = "all";
+    let currentPage = 0;
+    let pageCount = 1;
+    let selectedProduct = null;
+    let selection = { temperature: null, sweetness: null };
+    let pointerStart = null;
+    let swiped = false;
+    let toastTimer = null;
+
+    const stage = document.getElementById("stage");
+    const menuView = document.getElementById("menuView");
+    const detailView = document.getElementById("detailView");
+    const track = document.getElementById("productTrack");
+    const viewport = document.getElementById("productViewport");
+    const prevPage = document.getElementById("prevPage");
+    const nextPage = document.getElementById("nextPage");
+    const pageDots = document.getElementById("pageDots");
+    const pageLabel = document.getElementById("pageLabel");
+    const categoryTabs = document.getElementById("categoryTabs");
+
+    function t(key) { return translations[currentLang][key] || translations.zh[key] || key; }
+    function filteredProducts() { return currentCategory === "all" ? products : products.filter(p => p.category === currentCategory); }
+    function imageFor(product, temperature) { return assetBase + (product.images[temperature] || product.images.default); }
+    function priceFor(product) { return prices[product.id].toLocaleString("en-US") + " VND"; }
+    function chunk(items, size) { const pages = []; for (let i = 0; i < items.length; i += size) pages.push(items.slice(i, i + size)); return pages.length ? pages : [[]]; }
+
+    function fitStage() {
+      const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      stage.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    }
+
+    function renderStaticText() {
+      document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+      document.querySelectorAll(".lang-btn").forEach(btn => btn.classList.toggle("active", btn.dataset.lang === currentLang));
+      document.documentElement.lang = currentLang === "zh" ? "zh-CN" : currentLang;
+    }
+
+    function renderCategories() {
+      categoryTabs.innerHTML = categories.map(category => {
+        const count = category === "all" ? products.length : products.filter(p => p.category === category).length;
+        return `<button class="category-btn ${category === currentCategory ? "active" : ""}" data-category="${category}"><span>${t(category)}</span><span class="count">${count}</span></button>`;
+      }).join("");
+    }
+
+    function productCard(product) {
+      const temperatureTags = product.temperatures.length === 2 ? `${t("hot")} / ${t("iced")}` : product.temperatures.length === 1 ? t(product.temperatures[0]) : t("standardCup");
+      return `<button class="product-card" data-product="${product.id}" aria-label="${product.names[currentLang]}">
+        <span class="card-copy">
+          <span class="card-kicker">${t(product.category)}</span>
+          <span class="card-title">${product.names[currentLang]}</span>
+          <span class="card-subtitle">${product.subtitles[currentLang]}</span>
+          <span class="card-tags"><span class="mini-tag">${temperatureTags}</span>${product.machine ? `<span class="mini-tag machine">${product.machine}</span>` : ""}</span>
+          <span class="card-bottom"><span class="price-tag">${priceFor(product)}</span></span>
+        </span>
+        <span class="card-visual"><img src="${imageFor(product)}" alt="${product.names[currentLang]}" draggable="false"></span>
+      </button>`;
+    }
+
+    function renderProducts() {
+      const pages = chunk(filteredProducts(), 8);
+      pageCount = pages.length;
+      currentPage = Math.max(0, Math.min(currentPage, pageCount - 1));
+      track.innerHTML = pages.map(page => `<div class="product-page">${page.map(productCard).join("")}</div>`).join("");
+      updatePagination();
+    }
+
+    function updatePagination() {
+      track.style.transform = `translateX(-${currentPage * 100}%)`;
+      prevPage.disabled = currentPage === 0;
+      nextPage.disabled = currentPage >= pageCount - 1;
+      pageDots.innerHTML = Array.from({ length: pageCount }, (_, i) => `<button class="page-dot ${i === currentPage ? "active" : ""}" data-page="${i}" aria-label="${i + 1}"></button>`).join("");
+      pageLabel.textContent = `${String(currentPage + 1).padStart(2, "0")} / ${String(pageCount).padStart(2, "0")}`;
+    }
+
+    function goToPage(page) {
+      currentPage = Math.max(0, Math.min(page, pageCount - 1));
+      updatePagination();
+    }
+
+    function renderDetail() {
+      if (!selectedProduct) return;
+      document.getElementById("detailCategory").textContent = t(selectedProduct.category);
+      document.getElementById("detailMachine").hidden = !selectedProduct.machine;
+      document.getElementById("detailMachine").textContent = selectedProduct.machine || "";
+      document.getElementById("detailTitle").textContent = selectedProduct.names[currentLang];
+      document.getElementById("detailEnglish").textContent = selectedProduct.subtitles[currentLang];
+      document.getElementById("detailDescription").textContent = selectedProduct.descriptions[currentLang];
+      document.getElementById("detailPrice").textContent = priceFor(selectedProduct);
+      document.getElementById("detailImage").src = imageFor(selectedProduct, selection.temperature);
+      document.getElementById("detailImage").alt = selectedProduct.names[currentLang];
+      document.getElementById("temperatureGroup").hidden = selectedProduct.temperatures.length === 0;
+      document.getElementById("sweetnessGroup").hidden = !selectedProduct.sweetness;
+      document.getElementById("sweetStep").textContent = selectedProduct.temperatures.length ? "2" : "1";
+      document.getElementById("temperatureOptions").innerHTML = selectedProduct.temperatures.map(temp => {
+        const hot = temp === "hot";
+        return `<button class="option-btn ${selection.temperature === temp ? "selected" : ""}" data-temperature="${temp}"><svg viewBox="0 0 32 32" fill="none"><path d="M7 10h14v9a6 6 0 0 1-6 6h-2a6 6 0 0 1-6-6v-9Z" stroke="currentColor" stroke-width="1.8"/><path d="M21 12h2a4 4 0 0 1 0 8h-2M5 27h20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>${hot ? `<path d="M11 7c-2-2 2-3 0-5M17 7c-2-2 2-3 0-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>` : `<path d="M13 3v6M10 4l5 4M16 4l-5 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`}</svg><span><span class="option-name">${t(temp)}</span><span class="option-note">${t(hot ? "hotNote" : "icedNote")}</span></span></button>`;
+      }).join("");
+      document.getElementById("sweetnessOptions").innerHTML = ["3", "5", "7"].map(level => `<button class="option-btn ${selection.sweetness === level ? "selected" : ""}" data-sweetness="${level}"><span><span class="option-name">${t("sweet" + level)}</span><span class="option-note">${t(level === "3" ? "lightSweet" : level === "5" ? "mediumSweet" : "richSweet")}</span></span></button>`).join("");
+      updateSelectionSummary();
+    }
+
+    function isSelectionComplete() {
+      if (!selectedProduct) return false;
+      const temperatureReady = selectedProduct.temperatures.length === 0 || Boolean(selection.temperature);
+      const sweetnessReady = !selectedProduct.sweetness || Boolean(selection.sweetness);
+      return temperatureReady && sweetnessReady;
+    }
+
+    function selectionParts() {
+      const parts = [selectedProduct.names[currentLang]];
+      if (selection.temperature) parts.push(t(selection.temperature));
+      if (selection.sweetness) parts.push(t("sweet" + selection.sweetness));
+      parts.push("240 ML");
+      return parts;
+    }
+
+    function updateSelectionSummary() {
+      const complete = isSelectionComplete();
+      const summary = document.getElementById("selectionText");
+      const confirm = document.getElementById("confirmConfig");
+      if (selectedProduct.temperatures.length && !selection.temperature) summary.textContent = t("selectTemperature");
+      else if (selectedProduct.sweetness && !selection.sweetness) summary.textContent = t("selectSweetness");
+      else summary.textContent = selectionParts().join(" · ");
+      confirm.disabled = !complete;
+      document.getElementById("confirmText").textContent = complete ? t("readyConfirm") : t("incomplete");
+    }
+
+    function openDetail(productId) {
+      selectedProduct = products.find(p => p.id === productId);
+      if (!selectedProduct) return;
+      selection = { temperature: null, sweetness: null };
+      renderDetail();
+      menuView.hidden = true;
+      detailView.hidden = false;
+      detailView.classList.remove("view-enter");
+      void detailView.offsetWidth;
+      detailView.classList.add("view-enter");
+    }
+
+    function closeDetail() {
+      detailView.hidden = true;
+      menuView.hidden = false;
+      menuView.classList.remove("view-enter");
+      void menuView.offsetWidth;
+      menuView.classList.add("view-enter");
+      selectedProduct = null;
+    }
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      renderStaticText();
+      renderCategories();
+      renderProducts();
+      if (selectedProduct) renderDetail();
+    }
+
+    function changeDetailImage(temperature) {
+      const image = document.getElementById("detailImage");
+      image.classList.add("changing");
+      window.setTimeout(() => { image.src = imageFor(selectedProduct, temperature); image.classList.remove("changing"); }, 140);
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      document.getElementById("toastText").textContent = message;
+      toast.classList.add("show");
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => toast.classList.remove("show"), 3200);
+    }
+
+    document.querySelectorAll(".lang-btn").forEach(btn => btn.addEventListener("click", () => setLanguage(btn.dataset.lang)));
+    document.getElementById("brandHome").addEventListener("click", () => { currentCategory = "all"; currentPage = 0; renderCategories(); renderProducts(); });
+    document.getElementById("backButton").addEventListener("click", closeDetail);
+    prevPage.addEventListener("click", () => goToPage(currentPage - 1));
+    nextPage.addEventListener("click", () => goToPage(currentPage + 1));
+    pageDots.addEventListener("click", event => { const dot = event.target.closest("[data-page]"); if (dot) goToPage(Number(dot.dataset.page)); });
+    categoryTabs.addEventListener("click", event => {
+      const button = event.target.closest("[data-category]");
+      if (!button) return;
+      currentCategory = button.dataset.category;
+      currentPage = 0;
+      renderCategories();
+      renderProducts();
+    });
+    track.addEventListener("click", event => {
+      const card = event.target.closest("[data-product]");
+      if (!card || swiped) return;
+      openDetail(card.dataset.product);
+    });
+    document.getElementById("temperatureOptions").addEventListener("click", event => {
+      const button = event.target.closest("[data-temperature]");
+      if (!button || !selectedProduct) return;
+      selection.temperature = button.dataset.temperature;
+      renderDetail();
+      changeDetailImage(selection.temperature);
+    });
+    document.getElementById("sweetnessOptions").addEventListener("click", event => {
+      const button = event.target.closest("[data-sweetness]");
+      if (!button || !selectedProduct) return;
+      selection.sweetness = button.dataset.sweetness;
+      renderDetail();
+    });
+    document.getElementById("confirmConfig").addEventListener("click", () => {
+      if (!isSelectionComplete()) return;
+      showToast(`${t("configured")} · ${selectionParts().join(" · ")}`);
+    });
+
+    viewport.addEventListener("pointerdown", event => {
+      if (event.button !== 0) return;
+      pointerStart = { x: event.clientX, y: event.clientY, id: event.pointerId };
+      swiped = false;
+    });
+    window.addEventListener("pointerup", event => {
+      if (!pointerStart || menuView.hidden) { pointerStart = null; return; }
+      const dx = event.clientX - pointerStart.x;
+      const dy = event.clientY - pointerStart.y;
+      if (Math.abs(dx) > 72 && Math.abs(dx) > Math.abs(dy) * 1.15) {
+        swiped = true;
+        goToPage(currentPage + (dx < 0 ? 1 : -1));
+        window.setTimeout(() => { swiped = false; }, 180);
+      }
+      pointerStart = null;
+    });
+    window.addEventListener("pointercancel", () => { pointerStart = null; });
+    window.addEventListener("keydown", event => {
+      if (!detailView.hidden && event.key === "Escape") closeDetail();
+      else if (!menuView.hidden && event.key === "ArrowLeft") goToPage(currentPage - 1);
+      else if (!menuView.hidden && event.key === "ArrowRight") goToPage(currentPage + 1);
+    });
+    window.addEventListener("resize", fitStage);
+    document.addEventListener("contextmenu", event => event.preventDefault());
+    fitStage();
+    renderStaticText();
+    renderCategories();
+    renderProducts();
+    const requestedProduct = new URLSearchParams(window.location.search).get("product");
+    if (requestedProduct) openDetail(requestedProduct);
+  </script>
+</body>
+</html>
